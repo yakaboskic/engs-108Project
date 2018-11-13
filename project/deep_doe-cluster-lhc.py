@@ -8,12 +8,12 @@ import pandas
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import Sequential, Model
-from tensorflow.layers import Dense, Dropout, Flatten, BatchNormalization, Conv2D, MaxPool2D, AveragePooling2D
+from keras.layers import Dense, Dropout, Flatten, BatchNormalization, Conv2D, MaxPool2D, AveragePooling2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.optimizers import Adam, RMSprop
 import matplotlib.pyplot as plt
 
-PATH_TO_SOURCES = '/home/yakaboskic/src/'
+PATH_TO_SOURCES = '/home/cyakaboski/src/'
 MODULE_FOLDER_NAMES = ['Design-of-experiment-Python']
 
 for module in MODULE_FOLDER_NAMES:
@@ -74,64 +74,67 @@ dict_values = {'conv_filters1': [10,80],
               'dense_num' : [100, 1000]}
 
 
-doe = DOE_functions.build_central_composite(dict_values, face='ccf')
+#doe = DOE_functions.build_space_filling_lhs(dict_values, num_samples=500)
+doe = pandas.read_csv('doe_design-dx.csv')
+#doe.to_csv("doe_design-lhc.csv")
 
-doe.to_csv("doe_design.csv")
-
-act_map = {1:'sigmoid', 2:'relu', 3:'tanh'}
+act_map = {'Sigmoid':'sigmoid', 'Relu':'relu', 'Tanh':'tanh'}
 batch_size = 100
 epochs = 20
 results = []
 
-for test in range(0, doe.shape[0]):
+for test in range(2, doe.shape[0]):
     print('test:', test)
     try:
-        (conv_filter,
+        (run,
+         conv_filter,
          kernel_size,
          conv_stride,
-         activition,
-         pool_type,
          pool_size,
          pool_stride,
-         pool_momentum,
          drop_value,
-         dense_num) = doe.loc[test,:]
+         dense_num, 
+         pool_momentum,
+         activition,
+         pool_type,
+         result1,
+         result2) = doe.loc[test,:]
 
-        if pool_type == 1:
+        if pool_type == 'Max':
             pool_layer = MaxPool2D(padding='Same',
-                                   strides= (round(pool_size), round(pool_size)),
-                                   pool_size=(round(pool_size), round(pool_size)))
-        elif pool_type == 2:
+                                   strides= (int(pool_size), int(pool_size)),
+                                   pool_size=(int(pool_size), int(pool_size)))
+        elif pool_type == 'Average':
             pool_layer = AveragePooling2D(padding='Same',
-                                   strides= (round(pool_size), round(pool_size)),
-                                   pool_size=(round(pool_size), round(pool_size)))
+                                   strides= (int(pool_size), int(pool_size)),
+                                   pool_size=(int(pool_size), int(pool_size)))
         else:
-            pool_layer = BatchNormalization(momentum=pool_momentum)
+            pool_layer = BatchNormalization(momentum=float(pool_momentum))
 
-        conv_layer1 = Conv2D(round(conv_filter),
+        conv_layer1 = Conv2D(int(conv_filter),
                          input_shape = x_train[0].shape,
                          activation= act_map[activition],
-                         kernel_size = (round(kernel_size), round(kernel_size)),
+                         kernel_size = (int(kernel_size), int(kernel_size)),
                          padding='Same',
-                         strides = (round(conv_stride), round(conv_stride)))
-        conv_layer = Conv2D(round(conv_filter),
+                         strides = (int(conv_stride), int(conv_stride)))
+        conv_layer = Conv2D(int(conv_filter),
                          activation= act_map[activition],
-                         kernel_size = (round(kernel_size), round(kernel_size)),
+                         kernel_size = (int(kernel_size), int(kernel_size)),
                          padding='Same',
-                         strides = (round(conv_stride), round(conv_stride)))
+                         strides = (int(conv_stride), int(conv_stride)))
 
 
         model = Sequential()
         model.add(conv_layer1)
         model.add(pool_layer)
-        model.add(Dropout(drop_value))
+        model.add(Dropout(float(drop_value)))
         model.add(conv_layer)
         model.add(pool_layer)
-        model.add(Dropout(drop_value))
+        model.add(Dropout(float(drop_value)))
         model.add(conv_layer)
         model.add(Flatten())
         model.add(Dense(int(dense_num), activation='relu'))
-        model.add(Dropout(drop_value))
+        model.add(Dropout(float(drop_value)))
         model.add(Dense(10, activation='softmax'))
 
         #model.summary()
@@ -140,16 +143,13 @@ for test in range(0, doe.shape[0]):
 
         history = model.fit(x_train, y_train, 
                                 batch_size=batch_size, 
-                                epochs=epochs,
-                                verbose=0)
+                                epochs=epochs)
         result_loss, result_acc = model.evaluate(x_test, y_test)
 
         results.append((result_loss, result_acc))
     except Exception as e:
-        results.append(e)
+        results.append((e.message))
         continue
 
-with open('results.csv', 'w') as file:
-    writer = csv.writer(file)
-    for i in range(len(results)):
-        writer.writerow(results[i])
+with open('results-lhc', 'wb') as f:
+    pickle.dump(results, f)

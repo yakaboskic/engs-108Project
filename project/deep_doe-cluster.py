@@ -8,12 +8,12 @@ import pandas
 import tensorflow as tf
 from tensorflow import keras
 from keras.models import Sequential, Model
-from tensorflow.layers import Dense, Dropout, Flatten, BatchNormalization, Conv2D, MaxPool2D, AveragePooling2D
+from keras.layers import Dense, Dropout, Flatten, BatchNormalization, Conv2D, MaxPool2D, AveragePooling2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.optimizers import Adam, RMSprop
 import matplotlib.pyplot as plt
 
-PATH_TO_SOURCES = '/home/yakaboskic/src/'
+PATH_TO_SOURCES = '/home/cyakaboski/src/'
 MODULE_FOLDER_NAMES = ['Design-of-experiment-Python']
 
 for module in MODULE_FOLDER_NAMES:
@@ -76,7 +76,7 @@ dict_values = {'conv_filters1': [10,80],
 
 doe = DOE_functions.build_central_composite(dict_values, face='ccf')
 
-doe.to_csv("doe_design.csv")
+doe.to_csv("doe_design-cc.csv")
 
 act_map = {1:'sigmoid', 2:'relu', 3:'tanh'}
 batch_size = 100
@@ -146,10 +146,8 @@ for test in range(0, doe.shape[0]):
 
         results.append((result_loss, result_acc))
     except Exception as e:
-        results.append(e)
+        results.append((e.message))
         continue
 
-with open('results.csv', 'w') as file:
-    writer = csv.writer(file)
-    for i in range(len(results)):
-        writer.writerow(results[i])
+with open('results-cc', 'wb') as f:
+    pickle.dump(results, f)
